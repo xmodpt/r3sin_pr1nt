@@ -427,6 +427,7 @@ function generateFormField(field, pluginName) {
                         ${field.required ? 'required' : ''}
                         onchange="updatePluginConfigValue('${pluginName}', '${field.name}', this.value)">`;
             break;
+            
         case 'checkbox':
             inputHtml = `<label class="form-label">
                         <input type="checkbox" class="form-checkbox" id="${fieldId}" 
@@ -435,11 +436,13 @@ function generateFormField(field, pluginName) {
                         ${field.label}
                         </label>`;
             break;
+            
         case 'color':
             inputHtml = `<input type="color" class="form-color" id="${fieldId}" 
                         value="${field.value || '#000000'}"
                         onchange="updatePluginConfigValue('${pluginName}', '${field.name}', this.value)">`;
             break;
+            
         case 'number':
             inputHtml = `<input type="number" class="form-input" id="${fieldId}" 
                         value="${field.value || ''}" 
@@ -448,6 +451,20 @@ function generateFormField(field, pluginName) {
                         ${field.step !== undefined ? `step="${field.step}"` : ''}
                         onchange="updatePluginConfigValue('${pluginName}', '${field.name}', parseFloat(this.value))">`;
             break;
+            
+        case 'select':
+            let optionsHtml = '';
+            if (field.options && Array.isArray(field.options)) {
+                optionsHtml = field.options.map(option => 
+                    `<option value="${option.value}" ${option.value === field.value ? 'selected' : ''}>${option.label}</option>`
+                ).join('');
+            }
+            inputHtml = `<select class="form-input" id="${fieldId}" 
+                        onchange="updatePluginConfigValue('${pluginName}', '${field.name}', this.value)">
+                        ${optionsHtml}
+                        </select>`;
+            break;
+            
         default:
             inputHtml = `<input type="text" class="form-input" id="${fieldId}" 
                         value="${field.value || ''}"

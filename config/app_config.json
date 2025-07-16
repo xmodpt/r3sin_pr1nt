@@ -1,25 +1,5 @@
 {
-  "printer": {
-    "serial_port": "/dev/serial0",
-    "baudrate": 115200,
-    "timeout": 5.0,
-    "firmware_version": "V4.13"
-  },
-  "usb": {
-    "mount_point": "/mnt/usb_share",
-    "image_file": "/piusb.bin",
-    "auto_start": true
-  },
-  "interface": {
-    "theme": "dark",
-    "update_interval": 3000,
-    "console_max_lines": 50,
-    "webcam_enabled": false
-  },
   "file_management": {
-    "max_files": 50,
-    "max_age_days": 30,
-    "auto_cleanup": false,
     "allowed_extensions": [
       ".ctb",
       ".cbddlp",
@@ -29,6 +9,26 @@
       ".pws",
       ".pw0",
       ".pwx"
-    ]
+    ],
+    "auto_cleanup": false,
+    "max_age_days": 30,
+    "max_files": 50
+  },
+  "interface": {
+    "console_max_lines": 50,
+    "theme": "dark",
+    "update_interval": 3000,
+    "webcam_enabled": false
+  },
+  "printer": {
+    "baudrate": 115200,
+    "firmware_version": "V4.13",
+    "serial_port": "/dev/serial0",
+    "timeout": 5.0
+  },
+  "usb": {
+    "auto_start": true,
+    "image_file": "/piusb.bin",
+    "mount_point": "/mnt/usb_share"
   }
 }
