@@ -2,6 +2,7 @@
 """
 Configuration Manager for Resin Printer Application
 Handles application settings and plugin configurations
+Fixed version with better error handling and persistence
 """
 
 import json
@@ -56,23 +57,42 @@ class ConfigManager:
         }
         
         # Load configurations
+        logger.info(f"Loading configurations from: {self.config_dir}")
         self.app_config = self._load_config(self.app_config_file, self.default_app_config)
         self.plugin_config = self._load_config(self.plugin_config_file, self.default_plugin_config)
+        
+        logger.info(f"Loaded app config: {list(self.app_config.keys())}")
+        logger.info(f"Loaded plugin config with {len(self.plugin_config.get('enabled_plugins', []))} enabled plugins")
     
     def _load_config(self, config_file: Path, default_config: Dict[str, Any]) -> Dict[str, Any]:
         """Load configuration from file or create with defaults"""
         try:
             if config_file.exists():
+                logger.info(f"Loading config from: {config_file}")
                 with open(config_file, 'r') as f:
                     config = json.load(f)
                     # Merge with defaults to ensure all keys exist
-                    return self._merge_configs(default_config, config)
+                    merged = self._merge_configs(default_config, config)
+                    logger.info(f"Successfully loaded config from {config_file}")
+                    return merged
             else:
+                logger.info(f"Config file {config_file} doesn't exist, creating with defaults")
                 # Create default config file
                 self._save_config(config_file, default_config)
                 return default_config.copy()
         except Exception as e:
             logger.error(f"Error loading config from {config_file}: {e}")
+            logger.exception("Full traceback:")
+            # Try to backup corrupted file
+            try:
+                backup_file = config_file.with_suffix('.json.backup')
+                if config_file.exists():
+                    config_file.rename(backup_file)
+                    logger.info(f"Backed up corrupted config to: {backup_file}")
+            except:
+                pass
+            # Create new default config
+            self._save_config(config_file, default_config)
             return default_config.copy()
     
     def _merge_configs(self, default: Dict[str, Any], user: Dict[str, Any]) -> Dict[str, Any]:
@@ -86,13 +106,31 @@ class ConfigManager:
         return result
     
     def _save_config(self, config_file: Path, config: Dict[str, Any]) -> bool:
-        """Save configuration to file"""
+        """Save configuration to file with error handling"""
         try:
-            with open(config_file, 'w') as f:
-                json.dump(config, f, indent=2)
+            # Create directory if it doesn't exist
+            config_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Write to temporary file first
+            temp_file = config_file.with_suffix('.json.tmp')
+            with open(temp_file, 'w') as f:
+                json.dump(config, f, indent=2, sort_keys=True)
+            
+            # Atomically replace the original file
+            temp_file.replace(config_file)
+            
+            logger.info(f"Successfully saved config to: {config_file}")
             return True
         except Exception as e:
             logger.error(f"Error saving config to {config_file}: {e}")
+            logger.exception("Full traceback:")
+            # Clean up temp file if it exists
+            temp_file = config_file.with_suffix('.json.tmp')
+            if temp_file.exists():
+                try:
+                    temp_file.unlink()
+                except:
+                    pass
             return False
     
     def get_app_config(self, section: Optional[str] = None) -> Dict[str, Any]:
@@ -107,7 +145,9 @@ class ConfigManager:
             if section not in self.app_config:
                 self.app_config[section] = {}
             self.app_config[section][key] = value
-            return self._save_config(self.app_config_file, self.app_config)
+            success = self._save_config(self.app_config_file, self.app_config)
+            logger.info(f"Set app config {section}.{key} = {value}, saved: {success}")
+            return success
         except Exception as e:
             logger.error(f"Error setting app config {section}.{key}: {e}")
             return False
@@ -115,7 +155,7 @@ class ConfigManager:
     def get_plugin_config(self, plugin_name: Optional[str] = None) -> Dict[str, Any]:
         """Get plugin configuration"""
         if plugin_name:
-            return self.plugin_config["plugin_settings"].get(plugin_name, {})
+            return self.plugin_config.get("plugin_settings", {}).get(plugin_name, {})
         return self.plugin_config
     
     def set_plugin_config(self, plugin_name: str, config: Dict[str, Any]) -> bool:
@@ -123,10 +163,14 @@ class ConfigManager:
         try:
             if "plugin_settings" not in self.plugin_config:
                 self.plugin_config["plugin_settings"] = {}
+            
             self.plugin_config["plugin_settings"][plugin_name] = config
-            return self._save_config(self.plugin_config_file, self.plugin_config)
+            success = self._save_config(self.plugin_config_file, self.plugin_config)
+            logger.info(f"Set plugin config for {plugin_name}, saved: {success}")
+            return success
         except Exception as e:
             logger.error(f"Error setting plugin config for {plugin_name}: {e}")
+            logger.exception("Full traceback:")
             return False
     
     def enable_plugin(self, plugin_name: str) -> bool:
@@ -137,10 +181,15 @@ class ConfigManager:
             
             if plugin_name not in self.plugin_config["enabled_plugins"]:
                 self.plugin_config["enabled_plugins"].append(plugin_name)
-                return self._save_config(self.plugin_config_file, self.plugin_config)
-            return True
+                success = self._save_config(self.plugin_config_file, self.plugin_config)
+                logger.info(f"Enabled plugin {plugin_name}, saved: {success}")
+                return success
+            else:
+                logger.info(f"Plugin {plugin_name} already enabled")
+                return True
         except Exception as e:
             logger.error(f"Error enabling plugin {plugin_name}: {e}")
+            logger.exception("Full traceback:")
             return False
     
     def disable_plugin(self, plugin_name: str) -> bool:
@@ -151,19 +200,29 @@ class ConfigManager:
             
             if plugin_name in self.plugin_config["enabled_plugins"]:
                 self.plugin_config["enabled_plugins"].remove(plugin_name)
-                return self._save_config(self.plugin_config_file, self.plugin_config)
-            return True
+                success = self._save_config(self.plugin_config_file, self.plugin_config)
+                logger.info(f"Disabled plugin {plugin_name}, saved: {success}")
+                return success
+            else:
+                logger.info(f"Plugin {plugin_name} already disabled")
+                return True
         except Exception as e:
             logger.error(f"Error disabling plugin {plugin_name}: {e}")
+            logger.exception("Full traceback:")
             return False
     
     def is_plugin_enabled(self, plugin_name: str) -> bool:
         """Check if plugin is enabled"""
-        return plugin_name in self.plugin_config.get("enabled_plugins", [])
+        enabled_plugins = self.plugin_config.get("enabled_plugins", [])
+        is_enabled = plugin_name in enabled_plugins
+        logger.debug(f"Plugin {plugin_name} enabled: {is_enabled}")
+        return is_enabled
     
     def get_enabled_plugins(self) -> list:
         """Get list of enabled plugins"""
-        return self.plugin_config.get("enabled_plugins", [])
+        enabled = self.plugin_config.get("enabled_plugins", [])
+        logger.info(f"Enabled plugins from config: {enabled}")
+        return enabled
     
     def reset_to_defaults(self, section: Optional[str] = None) -> bool:
         """Reset configuration to defaults"""
@@ -193,6 +252,7 @@ class ConfigManager:
             }
             with open(export_path, 'w') as f:
                 json.dump(export_data, f, indent=2)
+            logger.info(f"Exported config to: {export_path}")
             return True
         except Exception as e:
             logger.error(f"Error exporting config: {e}")
@@ -212,7 +272,28 @@ class ConfigManager:
                 self.plugin_config = self._merge_configs(self.default_plugin_config, import_data["plugin_config"])
                 self._save_config(self.plugin_config_file, self.plugin_config)
             
+            logger.info(f"Imported config from: {import_path}")
             return True
         except Exception as e:
             logger.error(f"Error importing config: {e}")
-            return False 
+            return False
+    
+    def validate_config_files(self) -> Dict[str, bool]:
+        """Validate configuration files exist and are readable"""
+        results = {}
+        
+        for name, config_file in [("app_config", self.app_config_file), ("plugin_config", self.plugin_config_file)]:
+            try:
+                if config_file.exists():
+                    with open(config_file, 'r') as f:
+                        json.load(f)
+                    results[name] = True
+                    logger.info(f"Config file {name} is valid")
+                else:
+                    results[name] = False
+                    logger.warning(f"Config file {name} does not exist")
+            except Exception as e:
+                results[name] = False
+                logger.error(f"Config file {name} is invalid: {e}")
+        
+        return results

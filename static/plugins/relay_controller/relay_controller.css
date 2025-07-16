@@ -1,0 +1,289 @@
+/* Relay Controller Plugin Styles - Integrated with Main App */
+
+/* Toolbar relay buttons */
+.relay-toolbar-btn {
+    width: 40px;
+    height: 40px;
+    border: 2px solid #555;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: #3a3a3a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 4px;
+}
+
+.relay-toolbar-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    border-color: #777;
+}
+
+.relay-toolbar-btn.relay-off {
+    background-color: #3a3a3a;
+    border-color: #555;
+}
+
+.relay-toolbar-btn.relay-off i {
+    color: #c7c7c7;
+}
+
+.relay-toolbar-btn.relay-on {
+    background-color: #2d5a31;
+    border-color: #28a745;
+    box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
+}
+
+.relay-toolbar-btn.relay-on i {
+    color: #28a745;
+}
+
+/* Relay card integration with main app */
+.relay-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.relay-card-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.relay-card-btn {
+    width: 100%;
+    padding: 16px;
+    border: 1px solid #555;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: #4a4a4a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    min-height: 100px;
+}
+
+.relay-card-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    border-color: #777;
+}
+
+.relay-card-btn.relay-off {
+    background: #4a4a4a;
+    border-color: #555;
+}
+
+.relay-card-btn.relay-on {
+    background: linear-gradient(145deg, #2d5a31, #1b4d20);
+    border-color: #28a745;
+    box-shadow: 0 0 15px rgba(40, 167, 69, 0.2);
+}
+
+.relay-card-icon {
+    font-size: 2rem;
+    transition: color 0.3s ease;
+}
+
+.relay-card-btn.relay-off .relay-card-icon {
+    color: #c7c7c7;
+}
+
+.relay-card-btn.relay-on .relay-card-icon {
+    color: #28a745;
+}
+
+.relay-card-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 4px;
+    text-align: center;
+}
+
+.relay-card-status {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 12px;
+    display: inline-block;
+    min-width: 32px;
+    text-align: center;
+}
+
+.relay-card-btn.relay-off .relay-card-status {
+    background-color: #424242;
+    color: #999;
+}
+
+.relay-card-btn.relay-on .relay-card-status {
+    background-color: #1b5e20;
+    color: #4caf50;
+}
+
+/* Status bar relay items */
+.relay-status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.relay-status-indicator.relay-off {
+    background-color: #424242;
+    color: #999;
+}
+
+.relay-status-indicator.relay-on {
+    background-color: #1b5e20;
+    color: #4caf50;
+}
+
+/* Configuration form styles for plugin settings */
+.relay-config-section {
+    border: 1px solid #555;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 16px;
+    background-color: #3a3a3a;
+}
+
+.relay-config-title {
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #4a4a4a;
+    padding-bottom: 8px;
+}
+
+.relay-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.relay-form-full {
+    grid-column: span 2;
+}
+
+/* Animation for state changes */
+@keyframes relay-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+    }
+}
+
+.relay-card-btn.relay-on.relay-activated,
+.relay-toolbar-btn.relay-on.relay-activated {
+    animation: relay-pulse 0.6s;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .relay-toolbar-btn {
+        width: 36px;
+        height: 36px;
+        margin: 0 2px;
+    }
+    
+    .relay-card-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 8px;
+    }
+    
+    .relay-card-btn {
+        padding: 12px;
+        min-height: 80px;
+    }
+    
+    .relay-card-icon {
+        font-size: 1.5rem;
+    }
+    
+    .relay-form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .relay-form-full {
+        grid-column: span 1;
+    }
+}
+
+/* Dark mode enhancements */
+.relay-toolbar-btn:focus,
+.relay-card-btn:focus {
+    outline: 2px solid #2196f3;
+    outline-offset: 2px;
+}
+
+/* Loading state */
+.relay-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.relay-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid #555;
+    border-top: 2px solid #2196f3;
+    border-radius: 50%;
+    animation: relay-spin 1s linear infinite;
+}
+
+@keyframes relay-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Integration with main app cards */
+.relay-card-grid .relay-card-item:hover {
+    transform: none; /* Override any card hover effects */
+}
+
+/* Ensure relay card fits with main app styling */
+.card .relay-card-grid {
+    margin: 0;
+    padding-top: 8px;
+}
+
+/* Status summary styling */
+.relay-status-summary {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8rem;
+}
+
+.relay-count {
+    font-weight: 600;
+}
+
+.relay-count.has-active {
+    color: #28a745;
+}
+
+.relay-count.all-inactive {
+    color: #c7c7c7;
+} 

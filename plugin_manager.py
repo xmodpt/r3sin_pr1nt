@@ -2,6 +2,7 @@
 """
 Plugin Manager for Resin Printer Application
 Handles plugin discovery, loading, and management
+Fixed version with better error handling and debug logging
 """
 
 import importlib.util
@@ -33,17 +34,43 @@ class PluginManager:
         init_file = self.plugins_dir / "__init__.py"
         if not init_file.exists():
             init_file.touch()
+            
+        logger.info(f"Plugin Manager initialized with directory: {self.plugins_dir}")
+        logger.info(f"Config manager available: {self.config_manager is not None}")
     
     def discover_plugins(self) -> List[str]:
         """Discover all available plugins"""
         discovered = []
         
-        for plugin_dir in self.plugins_dir.iterdir():
-            if (plugin_dir.is_dir() and 
-                not plugin_dir.name.startswith('__') and
-                (plugin_dir / "plugin.py").exists()):
-                discovered.append(plugin_dir.name)
-                logger.info(f"Found plugin directory: {plugin_dir.name}")
+        logger.info(f"Discovering plugins in: {self.plugins_dir}")
+        logger.info(f"Directory exists: {self.plugins_dir.exists()}")
+        
+        if not self.plugins_dir.exists():
+            logger.warning(f"Plugins directory does not exist: {self.plugins_dir}")
+            return discovered
+        
+        try:
+            for plugin_dir in self.plugins_dir.iterdir():
+                logger.debug(f"Checking directory: {plugin_dir}")
+                
+                if (plugin_dir.is_dir() and 
+                    not plugin_dir.name.startswith('__') and
+                    not plugin_dir.name.startswith('.')):
+                    
+                    plugin_file = plugin_dir / "plugin.py"
+                    config_file = plugin_dir / "config.json"
+                    
+                    logger.debug(f"Plugin file exists: {plugin_file.exists()}")
+                    logger.debug(f"Config file exists: {config_file.exists()}")
+                    
+                    if plugin_file.exists():
+                        discovered.append(plugin_dir.name)
+                        logger.info(f"Found plugin: {plugin_dir.name}")
+                    else:
+                        logger.debug(f"Skipping {plugin_dir.name} - no plugin.py found")
+        except Exception as e:
+            logger.error(f"Error during plugin discovery: {e}")
+            logger.exception("Full traceback:")
         
         logger.info(f"Discovered {len(discovered)} plugins: {', '.join(discovered)}")
         return discovered
@@ -51,6 +78,8 @@ class PluginManager:
     def load_plugin(self, plugin_name: str) -> bool:
         """Load a specific plugin"""
         try:
+            logger.info(f"Loading plugin: {plugin_name}")
+            
             plugin_dir = self.plugins_dir / plugin_name
             if not plugin_dir.exists():
                 logger.error(f"Plugin directory not found: {plugin_dir}")
@@ -63,20 +92,26 @@ class PluginManager:
             
             logger.info(f"Loading plugin from: {plugin_file}")
             
+            # Remove from sys.modules if already loaded to force reload
+            module_name = f"plugins.{plugin_name}.plugin"
+            if module_name in sys.modules:
+                logger.info(f"Removing existing module: {module_name}")
+                del sys.modules[module_name]
+            
             # Import the plugin module
-            spec = importlib.util.spec_from_file_location(
-                f"plugins.{plugin_name}.plugin",
-                plugin_file
-            )
+            spec = importlib.util.spec_from_file_location(module_name, plugin_file)
             if spec is None:
                 logger.error(f"Could not create module spec for {plugin_name}")
                 return False
                 
             module = importlib.util.module_from_spec(spec)
             
-            # Add to sys.modules to prevent reimport issues
-            sys.modules[f"plugins.{plugin_name}.plugin"] = module
+            # Add to sys.modules
+            sys.modules[module_name] = module
+            
+            # Execute the module
             spec.loader.exec_module(module)
+            logger.info(f"Successfully executed module for {plugin_name}")
             
             # Find the plugin class (should be named Plugin)
             plugin_class = getattr(module, 'Plugin', None)
@@ -88,12 +123,15 @@ class PluginManager:
             
             # Instantiate the plugin
             plugin_instance = plugin_class(plugin_dir)
+            logger.info(f"Created plugin instance for {plugin_name}")
             
             # Set configuration if available
             if self.config_manager:
                 plugin_config = self.config_manager.get_plugin_config(plugin_name)
                 plugin_instance.set_config(plugin_config)
                 logger.info(f"Applied config to {plugin_name}: {plugin_config}")
+            else:
+                logger.warning("No config manager available - using default config")
             
             # Store the plugin
             self.available_plugins[plugin_name] = plugin_instance
@@ -109,12 +147,17 @@ class PluginManager:
     def enable_plugin(self, plugin_name: str) -> bool:
         """Enable a plugin"""
         try:
+            logger.info(f"Enabling plugin: {plugin_name}")
+            
             # Load plugin if not already loaded
             if plugin_name not in self.available_plugins:
+                logger.info(f"Plugin {plugin_name} not loaded, attempting to load...")
                 if not self.load_plugin(plugin_name):
+                    logger.error(f"Failed to load plugin {plugin_name}")
                     return False
             
             plugin = self.available_plugins[plugin_name]
+            logger.info(f"Plugin instance found: {plugin}")
             
             # Check dependencies
             if not self._check_dependencies(plugin):
@@ -122,6 +165,7 @@ class PluginManager:
                 return False
             
             # Initialize the plugin
+            logger.info(f"Initializing plugin {plugin_name}")
             if not plugin.initialize():
                 logger.error(f"Plugin {plugin_name} failed to initialize")
                 return False
@@ -135,25 +179,36 @@ class PluginManager:
             
             # Update configuration
             if self.config_manager:
-                self.config_manager.enable_plugin(plugin_name)
+                success = self.config_manager.enable_plugin(plugin_name)
+                logger.info(f"Config update success: {success}")
+            else:
+                logger.warning("No config manager - plugin enable state not saved")
             
             logger.info(f"Plugin {plugin_name} enabled successfully")
             return True
             
         except Exception as e:
             logger.error(f"Error enabling plugin {plugin_name}: {e}")
+            logger.exception("Full traceback:")
             return False
     
     def disable_plugin(self, plugin_name: str) -> bool:
         """Disable a plugin"""
         try:
+            logger.info(f"Disabling plugin: {plugin_name}")
+            
             if plugin_name not in self.loaded_plugins:
+                logger.info(f"Plugin {plugin_name} already disabled")
                 return True  # Already disabled
             
             plugin = self.loaded_plugins[plugin_name]
             
             # Cleanup the plugin
-            plugin.cleanup()
+            try:
+                plugin.cleanup()
+                logger.info(f"Plugin {plugin_name} cleanup completed")
+            except Exception as e:
+                logger.error(f"Error during plugin cleanup: {e}")
             
             # Mark as disabled
             plugin.enabled = False
@@ -166,18 +221,23 @@ class PluginManager:
             
             # Update configuration
             if self.config_manager:
-                self.config_manager.disable_plugin(plugin_name)
+                success = self.config_manager.disable_plugin(plugin_name)
+                logger.info(f"Config update success: {success}")
             
             logger.info(f"Plugin {plugin_name} disabled successfully")
             return True
             
         except Exception as e:
             logger.error(f"Error disabling plugin {plugin_name}: {e}")
+            logger.exception("Full traceback:")
             return False
     
     def reload_plugin(self, plugin_name: str) -> bool:
         """Reload a plugin"""
+        logger.info(f"Reloading plugin: {plugin_name}")
+        
         was_enabled = plugin_name in self.loaded_plugins
+        logger.info(f"Plugin was enabled: {was_enabled}")
         
         # Disable if currently enabled
         if was_enabled:
@@ -191,17 +251,21 @@ class PluginManager:
         module_name = f"plugins.{plugin_name}.plugin"
         if module_name in sys.modules:
             del sys.modules[module_name]
+            logger.info(f"Removed module from sys.modules: {module_name}")
         
         # Load and enable if it was previously enabled
-        if self.load_plugin(plugin_name) and was_enabled:
-            return self.enable_plugin(plugin_name)
+        if self.load_plugin(plugin_name):
+            if was_enabled:
+                return self.enable_plugin(plugin_name)
+            return True
         
-        return True
+        return False
     
     def _check_dependencies(self, plugin: PluginBase) -> bool:
         """Check if plugin dependencies are met"""
         for dep in plugin.dependencies:
             if dep not in self.loaded_plugins:
+                logger.warning(f"Missing dependency: {dep}")
                 return False
         return True
     
@@ -212,6 +276,7 @@ class PluginManager:
                 self.plugin_hooks[hook] = []
             if plugin not in self.plugin_hooks[hook]:
                 self.plugin_hooks[hook].append(plugin)
+                logger.debug(f"Registered hook {hook} for plugin {plugin.name}")
     
     def _unregister_plugin_hooks(self, plugin: PluginBase):
         """Unregister plugin hooks"""
@@ -222,10 +287,13 @@ class PluginManager:
     def register_blueprints(self, app: Flask):
         """Register all plugin blueprints with Flask app"""
         for plugin in self.loaded_plugins.values():
-            blueprint = plugin.create_blueprint()
-            if blueprint:
-                app.register_blueprint(blueprint)
-                logger.info(f"Registered blueprint for plugin {plugin.name}")
+            try:
+                blueprint = plugin.create_blueprint()
+                if blueprint:
+                    app.register_blueprint(blueprint)
+                    logger.info(f"Registered blueprint for plugin {plugin.name}")
+            except Exception as e:
+                logger.error(f"Error registering blueprint for plugin {plugin.name}: {e}")
     
     def call_hook(self, hook_name: str, *args, **kwargs):
         """Call all plugins registered for a specific hook"""
@@ -324,51 +392,22 @@ class PluginManager:
     def initialize_enabled_plugins(self):
         """Initialize all enabled plugins from configuration"""
         if not self.config_manager:
-            return
-        
-        enabled_plugins = self.config_manager.get_enabled_plugins()
-        
-        for plugin_name in enabled_plugins:
-            logger.info(f"Auto-enabling plugin: {plugin_name}")
-            self.enable_plugin(plugin_name)
-    
-    def shutdown_all_plugins(self):
-        """Shutdown all loaded plugins"""
-        for plugin_name in list(self.loaded_plugins.keys()):
-            self.disable_plugin(plugin_name)
-        
-        logger.info("All plugins shutdown")
-    
-    def save_plugin_config(self, plugin_name: str, config_data: Dict[str, Any]) -> bool:
-        """Save configuration for a specific plugin"""
-        try:
-            if plugin_name in self.loaded_plugins:
-                plugin = self.loaded_plugins[plugin_name]
-                if plugin.handle_config_save(config_data):
-                    # Save to global config
-                    if self.config_manager:
-                        return self.config_manager.set_plugin_config(plugin_name, config_data)
-                    return True
-            return False
-        except Exception as e:
-            logger.error(f"Error saving config for plugin {plugin_name}: {e}")
-            return False
-    
-    def initialize_enabled_plugins(self):
-        """Initialize all enabled plugins from configuration"""
-        if not self.config_manager:
             logger.warning("No config manager available for plugin initialization")
             return
         
-        enabled_plugins = self.config_manager.get_enabled_plugins()
-        logger.info(f"Found {len(enabled_plugins)} enabled plugins: {enabled_plugins}")
-        
-        for plugin_name in enabled_plugins:
-            logger.info(f"Auto-enabling plugin: {plugin_name}")
-            if self.enable_plugin(plugin_name):
-                logger.info(f"Successfully enabled plugin: {plugin_name}")
-            else:
-                logger.error(f"Failed to enable plugin: {plugin_name}")
+        try:
+            enabled_plugins = self.config_manager.get_enabled_plugins()
+            logger.info(f"Found {len(enabled_plugins)} enabled plugins in config: {enabled_plugins}")
+            
+            for plugin_name in enabled_plugins:
+                logger.info(f"Auto-enabling plugin: {plugin_name}")
+                if self.enable_plugin(plugin_name):
+                    logger.info(f"Successfully enabled plugin: {plugin_name}")
+                else:
+                    logger.error(f"Failed to enable plugin: {plugin_name}")
+        except Exception as e:
+            logger.error(f"Error initializing enabled plugins: {e}")
+            logger.exception("Full traceback:")
     
     def shutdown_all_plugins(self):
         """Shutdown all loaded plugins"""
@@ -378,3 +417,30 @@ class PluginManager:
             self.disable_plugin(plugin_name)
         
         logger.info("All plugins shutdown")
+    
+    def save_plugin_config(self, plugin_name: str, config_data: Dict[str, Any]) -> bool:
+        """Save configuration for a specific plugin"""
+        try:
+            logger.info(f"Saving config for plugin {plugin_name}: {config_data}")
+            
+            if plugin_name in self.loaded_plugins:
+                plugin = self.loaded_plugins[plugin_name]
+                if plugin.handle_config_save(config_data):
+                    # Save to global config
+                    if self.config_manager:
+                        success = self.config_manager.set_plugin_config(plugin_name, config_data)
+                        logger.info(f"Config saved to manager: {success}")
+                        return success
+                    return True
+            else:
+                logger.warning(f"Plugin {plugin_name} not loaded, cannot save config")
+                # Still save to config manager even if plugin not loaded
+                if self.config_manager:
+                    success = self.config_manager.set_plugin_config(plugin_name, config_data)
+                    logger.info(f"Config saved to manager (plugin not loaded): {success}")
+                    return success
+            return False
+        except Exception as e:
+            logger.error(f"Error saving config for plugin {plugin_name}: {e}")
+            logger.exception("Full traceback:")
+            return False

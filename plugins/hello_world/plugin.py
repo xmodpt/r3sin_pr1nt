@@ -11,9 +11,9 @@ import sys
 import os
 
 # Add the parent directory to Python path so we can import plugin_base
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from plugin_base import PluginBase
+from plugins.plugin_base import PluginBase
 
 logger = logging.getLogger(__name__)
 

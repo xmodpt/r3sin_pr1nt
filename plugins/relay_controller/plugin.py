@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
 Relay Controller Plugin - GPIO relay control for Resin Printer Application
-Provides web-based control of up to 4 GPIO relays with configurable icons and behavior
+Integrates seamlessly with the main app's card layout and toolbar
 """
 
 import logging
 import sys
 import os
 from typing import Dict, Any, List
-from flask import jsonify, request, render_template_string
+from flask import jsonify, request
 import json
 
 # Add the parent directory to Python path so we can import plugin_base
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from plugin_base import PluginBase
+from plugins.plugin_base import PluginBase
 
 # Try to import GPIO, fallback to simulation mode
 try:
@@ -73,7 +73,7 @@ class Plugin(PluginBase):
                         "icon": "fas fa-fire",
                         "invert_logic": False
                     },
-                    "display_mode": "toolbar",
+                    "display_mode": "toolbar",  # toolbar, cards, both
                     "show_in_status": True
                 }
             
@@ -96,14 +96,13 @@ class Plugin(PluginBase):
         """Initialize GPIO settings"""
         if not GPIO_AVAILABLE:
             logger.warning("GPIO not available - running in simulation mode")
-            # In simulation mode, set initial states
             for relay_id in ['relay_1', 'relay_2', 'relay_3', 'relay_4']:
                 relay_config = self.config.get(relay_id, {})
                 if relay_config.get('enabled', False):
                     if relay_config.get('behavior', 'NO') == 'NO':
-                        self.relay_states[relay_id] = False  # NO starts OFF
-                    else:  # NC
-                        self.relay_states[relay_id] = True   # NC starts ON
+                        self.relay_states[relay_id] = False
+                    else:
+                        self.relay_states[relay_id] = True
             return
         
         try:
@@ -116,15 +115,13 @@ class Plugin(PluginBase):
                     gpio_pin = relay_config.get('gpio', 18)
                     logger.info(f"Setting up GPIO pin {gpio_pin} for {relay_id}")
                     
-                    # Setup pin as output
                     GPIO.setup(gpio_pin, GPIO.OUT)
                     
-                    # Set initial state based on behavior
                     if relay_config.get('behavior', 'NO') == 'NO':
-                        GPIO.output(gpio_pin, GPIO.LOW)  # NO: LOW = OFF
+                        GPIO.output(gpio_pin, GPIO.LOW)
                         self.relay_states[relay_id] = False
-                    else:  # NC
-                        GPIO.output(gpio_pin, GPIO.LOW)  # NC: LOW = ON
+                    else:
+                        GPIO.output(gpio_pin, GPIO.LOW)
                         self.relay_states[relay_id] = True
             
             self.gpio_initialized = True
@@ -138,10 +135,8 @@ class Plugin(PluginBase):
         if GPIO_AVAILABLE and self.gpio_initialized:
             try:
                 logger.info("Cleaning up GPIO...")
-                # Turn off all relays before cleanup
                 for relay_id in self.relay_states:
                     self._set_relay_state(relay_id, False)
-                
                 GPIO.cleanup()
                 logger.info("GPIO cleanup completed")
             except Exception as e:
@@ -153,10 +148,7 @@ class Plugin(PluginBase):
         """Get the display state based on actual state and invert logic setting"""
         relay_config = self.config.get(relay_id, {})
         invert_logic = relay_config.get('invert_logic', False)
-        
-        if invert_logic:
-            return not actual_state
-        return actual_state
+        return not actual_state if invert_logic else actual_state
     
     def _set_relay_state(self, relay_id: str, state: bool) -> bool:
         """Set relay state based on configuration"""
@@ -176,11 +168,9 @@ class Plugin(PluginBase):
             behavior = relay_config.get('behavior', 'NO')
             
             if behavior == 'NO':
-                # NO (Normally Open): HIGH = ON, LOW = OFF
                 gpio_state = GPIO.HIGH if state else GPIO.LOW
                 GPIO.output(gpio_pin, gpio_state)
             else:
-                # NC (Normally Closed): LOW = ON, HIGH = OFF
                 gpio_state = GPIO.LOW if state else GPIO.HIGH
                 GPIO.output(gpio_pin, gpio_state)
             
@@ -219,13 +209,76 @@ class Plugin(PluginBase):
                         "padding": "8px",
                         "border-radius": "4px",
                         "border": "1px solid #555",
-                        "background": "#3a3a3a",
-                        "transition": "all 0.3s ease"
+                        "background": "#2d5a31" if display_state else "#3a3a3a",
+                        "transition": "all 0.3s ease",
+                        "width": "40px",
+                        "height": "40px",
+                        "display": "flex",
+                        "align-items": "center",
+                        "justify-content": "center",
+                        "margin": "0 4px"
                     },
-                    "priority": 200 + int(relay_id.split('_')[1])  # relay_1 = 201, etc.
+                    "priority": 200 + int(relay_id.split('_')[1])
                 })
         
         return items
+    
+    def get_card_items(self) -> List[Dict[str, Any]]:
+        """Return card items to be inserted into main app layout"""
+        if self.config.get('display_mode') not in ['cards', 'both']:
+            return []
+        
+        # Create relay control card that integrates with main app
+        enabled_relays = []
+        for relay_id in ['relay_1', 'relay_2', 'relay_3', 'relay_4']:
+            relay_config = self.config.get(relay_id, {})
+            if relay_config.get('enabled', False):
+                actual_state = self.relay_states.get(relay_id, False)
+                display_state = self._get_display_state(relay_id, actual_state)
+                enabled_relays.append({
+                    'id': relay_id,
+                    'name': relay_config.get('name', relay_id),
+                    'icon': relay_config.get('icon', 'fas fa-power-off'),
+                    'state': display_state
+                })
+        
+        if not enabled_relays:
+            return []
+        
+        # Generate HTML for relay card
+        relay_buttons_html = ""
+        for relay in enabled_relays:
+            state_class = "relay-on" if relay['state'] else "relay-off"
+            state_text = "ON" if relay['state'] else "OFF"
+            relay_buttons_html += f'''
+                <div class="relay-card-item">
+                    <button class="relay-card-btn {state_class}" onclick="toggleRelay('{relay['id']}')" 
+                            id="card-{relay['id']}" title="{relay['name']}">
+                        <i class="relay-card-icon {relay['icon']}"></i>
+                        <div class="relay-card-name">{relay['name']}</div>
+                        <div class="relay-card-status">{state_text}</div>
+                    </button>
+                </div>
+            '''
+        
+        card_html = f'''
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-header-left">🔌 Relay Control</div>
+                </div>
+                <div class="relay-card-grid">
+                    {relay_buttons_html}
+                </div>
+            </div>
+        '''
+        
+        return [{
+            "id": "relay_control_card",
+            "type": "card",
+            "content": card_html,
+            "position": "after_status",  # Insert after status card
+            "priority": 150
+        }]
     
     def get_status_bar_items(self) -> List[Dict[str, Any]]:
         """Add relay status to status bar"""
@@ -262,6 +315,13 @@ class Plugin(PluginBase):
             "priority": 150
         }]
     
+    def get_frontend_assets(self) -> Dict[str, List[str]]:
+        """Get CSS/JS for relay cards"""
+        return {
+            "css": ["relay_controller.css"],
+            "js": ["relay_controller.js"]
+        }
+    
     def get_config_tabs(self) -> List[Dict[str, Any]]:
         """Provide configuration tab for settings modal"""
         return [{
@@ -277,9 +337,9 @@ class Plugin(PluginBase):
                         "type": "select",
                         "value": self.config.get("display_mode", "toolbar"),
                         "options": [
-                            {"value": "toolbar", "label": "Toolbar Only"},
-                            {"value": "status", "label": "Status Bar Only"},
-                            {"value": "both", "label": "Both Toolbar & Status"}
+                            {"value": "toolbar", "label": "Toolbar Only - Small buttons in top toolbar"},
+                            {"value": "cards", "label": "Cards - Large buttons in main interface"},
+                            {"value": "both", "label": "Both - Toolbar + Cards"}
                         ],
                         "help": "How to display relay controls in the interface"
                     },
@@ -338,7 +398,8 @@ class Plugin(PluginBase):
                         {"value": "fas fa-fire", "label": "🔥 Heater/Curing"},
                         {"value": "fas fa-plug", "label": "🔌 Power"},
                         {"value": "fas fa-camera", "label": "📷 Camera"},
-                        {"value": "fas fa-bell", "label": "🔔 Alarm"}
+                        {"value": "fas fa-bell", "label": "🔔 Alarm"},
+                        {"value": "fas fa-power-off", "label": "⚡ Generic Power"}
                     ],
                     "help": f"Icon to display for relay {i}"
                 },
@@ -477,21 +538,6 @@ class Plugin(PluginBase):
             
             return jsonify(status)
     
-    def on_print_started(self, filename: str):
-        """Called when print starts - could auto-enable UV light"""
-        logger.info(f"Relay Controller: Print started - {filename}")
-        # Example: Auto-enable UV light when printing starts
-        # if self.config.get('auto_uv_on_print', False):
-        #     self._set_relay_state('relay_1', True)
-    
-    def on_print_finished(self, filename: str, status: str):
-        """Called when print finishes - could auto-disable relays"""
-        logger.info(f"Relay Controller: Print finished - {filename} ({status})")
-        # Example: Auto-disable all relays when print finishes
-        # if self.config.get('auto_off_on_finish', False):
-        #     for relay_id in self.relay_states:
-        #         self._set_relay_state(relay_id, False)
-    
     def modify_status_response(self, status: Dict[str, Any]) -> Dict[str, Any]:
         """Add relay information to status response"""
         if "plugins" not in status:
@@ -514,4 +560,4 @@ class Plugin(PluginBase):
             "version": self.version
         }
         
-        return status 
+        return status

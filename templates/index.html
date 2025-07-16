@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resin Print Portal</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    
+    <!-- Plugin CSS Assets -->
+    {% if plugin_assets and plugin_assets.css %}
+        {% for css_file in plugin_assets.css %}
+            <link rel="stylesheet" href="{{ url_for('static', filename=css_file) }}">
+        {% endfor %}
+    {% endif %}
 </head>
 <body>
     <!-- Toolbar -->
@@ -16,6 +23,9 @@
             </div>
         </div>
         <div class="toolbar-right">
+            <!-- Plugin toolbar items will be inserted here -->
+            <div id="pluginToolbarItems"></div>
+            
             <button class="toolbar-btn" onclick="openConfigModal()">
                 <span>⚙️</span>
                 <span>Settings</span>
@@ -55,6 +65,11 @@
             <div class="progress-bar">
                 <div class="progress-fill" id="progressBar"></div>
             </div>
+        </div>
+
+        <!-- Plugin Cards Injection Point -->
+        <div id="pluginCardsContainer">
+            <!-- Plugin cards will be injected here -->
         </div>
 
         <!-- Alerts -->
@@ -287,5 +302,12 @@
     </div>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    <!-- Plugin JS Assets -->
+    {% if plugin_assets and plugin_assets.js %}
+        {% for js_file in plugin_assets.js %}
+            <script src="{{ url_for('static', filename=js_file) }}"></script>
+        {% endfor %}
+    {% endif %}
 </body>
 </html>

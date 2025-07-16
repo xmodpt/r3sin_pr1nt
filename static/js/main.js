@@ -1090,3 +1090,188 @@ function showAlert(message, type) {
 window.addEventListener('beforeunload', () => {
     if (updateInterval) clearInterval(updateInterval);
 });
+
+
+// Plugin card management
+async function loadPluginCards() {
+    try {
+        const response = await fetch('/api/plugin_cards');
+        const result = await response.json();
+        
+        if (result.success && result.cards) {
+            updatePluginCards(result.cards);
+        }
+    } catch (error) {
+        console.error('Error loading plugin cards:', error);
+    }
+}
+
+function updatePluginCards(cards) {
+    const container = document.getElementById('pluginCardsContainer');
+    container.innerHTML = '';
+    
+    // Sort cards by priority
+    cards.sort((a, b) => (a.priority || 100) - (b.priority || 100));
+    
+    cards.forEach(card => {
+        if (card.type === 'card') {
+            const cardElement = document.createElement('div');
+            cardElement.innerHTML = card.content;
+            container.appendChild(cardElement);
+        }
+    });
+}
+
+// Plugin toolbar management  
+async function loadPluginToolbarItems() {
+    try {
+        const response = await fetch('/api/plugin_toolbar_items');
+        const result = await response.json();
+        
+        if (result.success && result.items) {
+            updatePluginToolbarItems(result.items);
+        }
+    } catch (error) {
+        console.error('Error loading plugin toolbar items:', error);
+    }
+}
+
+function updatePluginToolbarItems(items) {
+    const container = document.getElementById('pluginToolbarItems');
+    container.innerHTML = '';
+    
+    // Sort items by priority
+    items.sort((a, b) => (a.priority || 100) - (b.priority || 100));
+    
+    items.forEach(item => {
+        const element = createPluginToolbarElement(item);
+        container.appendChild(element);
+    });
+}
+
+function createPluginToolbarElement(item) {
+    const element = document.createElement('div');
+    element.className = item.class || 'toolbar-btn';
+    element.innerHTML = item.content;
+    
+    if (item.style) {
+        Object.assign(element.style, item.style);
+    }
+    
+    if (item.onclick) {
+        // Create onclick function from string
+        element.onclick = new Function(item.onclick);
+    }
+    
+    if (item.title) {
+        element.title = item.title;
+    }
+    
+    return element;
+}
+
+// Relay control functions (for plugin integration)
+async function toggleRelay(relayId) {
+    if (window.relayToggling) return;
+    
+    window.relayToggling = true;
+    
+    try {
+        const response = await fetch(`/api/plugins/relay_controller/toggle_relay/${relayId}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            updateRelayButtonState(relayId, data.state);
+            showAlert(data.message, 'success');
+        } else {
+            showAlert(data.message || 'Failed to toggle relay', 'error');
+        }
+    } catch (error) {
+        console.error('Relay toggle error:', error);
+        showAlert('Network error - please try again', 'error');
+    } finally {
+        window.relayToggling = false;
+    }
+}
+
+function updateRelayButtonState(relayId, state) {
+    // Update card button
+    const cardButton = document.getElementById(`card-${relayId}`);
+    if (cardButton) {
+        cardButton.className = state ? 'relay-card-btn relay-on' : 'relay-card-btn relay-off';
+        const statusElement = cardButton.querySelector('.relay-card-status');
+        if (statusElement) {
+            statusElement.textContent = state ? 'ON' : 'OFF';
+        }
+    }
+    
+    // Update toolbar button
+    const toolbarButton = document.querySelector(`[onclick="toggleRelay('${relayId}')"]`);
+    if (toolbarButton) {
+        toolbarButton.className = toolbarButton.className
+            .replace(/relay-(on|off)/g, '')
+            .trim() + ` relay-${state ? 'on' : 'off'}`;
+        
+        const icon = toolbarButton.querySelector('i');
+        if (icon) {
+            icon.style.color = state ? '#28a745' : '#c7c7c7';
+        }
+        
+        toolbarButton.style.background = state ? '#2d5a31' : '#3a3a3a';
+        toolbarButton.style.borderColor = state ? '#28a745' : '#555';
+    }
+}
+
+// Auto-refresh relay states
+async function refreshRelayStates() {
+    try {
+        const response = await fetch('/api/plugins/relay_controller/get_status');
+        
+        if (!response.ok) {
+            return;
+        }
+        
+        const data = await response.json();
+        
+        // Update all relay button states
+        for (const [relayId, relayInfo] of Object.entries(data)) {
+            updateRelayButtonState(relayId, relayInfo.state);
+        }
+    } catch (error) {
+        // Silently fail - plugin might not be loaded
+    }
+}
+
+// Update the main initialization function
+document.addEventListener('DOMContentLoaded', function() {
+    setupUpload();
+    updateStatus();
+    updateFiles();
+    checkUSB();
+    loadPluginStatusItems();
+    loadPluginCards();        // Load plugin cards
+    loadPluginToolbarItems(); // Load plugin toolbar items
+    addConsoleMessage('System initialized with plugin support', 'info');
+    addConsoleMessage('Waiting for printer connection...');
+    
+    updateInterval = setInterval(() => {
+        updateStatus();
+        checkUSB();
+        loadPluginStatusItems();
+        refreshRelayStates();     // Refresh relay states
+    }, 3000);
+});
+
+// Keyboard shortcuts for relays
+document.addEventListener('keydown', function(event) {
+    if (event.ctrlKey && event.key >= '1' && event.key <= '4') {
+        event.preventDefault();
+        const relayId = `relay_${event.key}`;
+        toggleRelay(relayId);
+    }
+});
