@@ -1,0 +1,10 @@
+{
+  "enabled_plugins": [
+    "relay_controller"
+  ],
+  "plugin_settings": {
+    "relay_controller": {
+      "show_in_status": false
+    }
+  }
+}

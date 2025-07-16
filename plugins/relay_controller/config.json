@@ -1,0 +1,85 @@
+{
+  "name": "relay_controller",
+  "version": "1.0.0",
+  "author": "Printer Portal Team",
+  "description": "GPIO relay controller plugin with configurable relays, icons, and display modes. Control up to 4 relays through web interface.",
+  "dependencies": [],
+  "hooks": [
+    "printer_connected",
+    "printer_disconnected",
+    "print_started",
+    "print_finished"
+  ],
+  "routes": [
+    "/relays",
+    "/toggle_relay/<relay_id>",
+    "/set_relay/<relay_id>/<state>",
+    "/get_status",
+    "/save_config"
+  ],
+  "frontend_assets": {
+    "css": ["relay_controller.css"],
+    "js": ["relay_controller.js"]
+  },
+  "permissions": ["gpio"],
+  "settings": {
+    "relay_1": {
+      "type": "object",
+      "default": {
+        "enabled": true,
+        "gpio": 22,
+        "behavior": "NO",
+        "name": "UV Light",
+        "icon": "fas fa-lightbulb",
+        "invert_logic": false
+      },
+      "description": "Relay 1 configuration"
+    },
+    "relay_2": {
+      "type": "object",
+      "default": {
+        "enabled": true,
+        "gpio": 23,
+        "behavior": "NO",
+        "name": "Exhaust Fan",
+        "icon": "fas fa-fan",
+        "invert_logic": false
+      },
+      "description": "Relay 2 configuration"
+    },
+    "relay_3": {
+      "type": "object",
+      "default": {
+        "enabled": true,
+        "gpio": 24,
+        "behavior": "NO",
+        "name": "Wash Station",
+        "icon": "fas fa-shower",
+        "invert_logic": false
+      },
+      "description": "Relay 3 configuration"
+    },
+    "relay_4": {
+      "type": "object",
+      "default": {
+        "enabled": true,
+        "gpio": 25,
+        "behavior": "NO",
+        "name": "Curing Light",
+        "icon": "fas fa-fire",
+        "invert_logic": false
+      },
+      "description": "Relay 4 configuration"
+    },
+    "display_mode": {
+      "type": "string",
+      "default": "toolbar",
+      "description": "How to display relay controls"
+    },
+    "show_in_status": {
+      "type": "boolean",
+      "default": true,
+      "description": "Show relay status in main status bar"
+    }
+  }
+} 

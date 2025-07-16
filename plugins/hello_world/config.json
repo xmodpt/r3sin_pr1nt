@@ -1,0 +1,46 @@
+{
+  "name": "hello_world",
+  "version": "1.0.0",
+  "author": "Printer Portal Team",
+  "description": "A simple example plugin that adds 'Hello World' to the status bar and demonstrates plugin functionality.",
+  "dependencies": [],
+  "hooks": [
+    "printer_connected",
+    "printer_disconnected",
+    "print_started",
+    "print_finished",
+    "status_update"
+  ],
+  "routes": [
+    "/info",
+    "/message",
+    "/test"
+  ],
+  "frontend_assets": {
+    "css": [],
+    "js": []
+  },
+  "permissions": [],
+  "settings": {
+    "message": {
+      "type": "string",
+      "default": "Hello World",
+      "description": "The message to display"
+    },
+    "show_in_status": {
+      "type": "boolean",
+      "default": true,
+      "description": "Show message in status bar"
+    },
+    "show_time": {
+      "type": "boolean",
+      "default": true,
+      "description": "Include timestamp with message"
+    },
+    "color": {
+      "type": "color",
+      "default": "#4caf50",
+      "description": "Text color for the message"
+    }
+  }
+} 

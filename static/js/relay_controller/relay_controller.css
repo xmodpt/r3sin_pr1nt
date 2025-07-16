@@ -1,0 +1,276 @@
+/* Relay Controller Plugin Styles */
+
+/* Toolbar relay buttons */
+.relay-toolbar-btn {
+    width: 40px;
+    height: 40px;
+    border: 2px solid #555;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: #3a3a3a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 4px;
+}
+
+.relay-toolbar-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    border-color: #777;
+}
+
+.relay-toolbar-btn.relay-off {
+    background-color: #3a3a3a;
+    border-color: #555;
+}
+
+.relay-toolbar-btn.relay-off i {
+    color: #c7c7c7;
+}
+
+.relay-toolbar-btn.relay-on {
+    background-color: #2d5a31;
+    border-color: #28a745;
+    box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
+}
+
+.relay-toolbar-btn.relay-on i {
+    color: #28a745;
+}
+
+/* Relay status indicators */
+.relay-status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.relay-status-indicator.relay-off {
+    background-color: #424242;
+    color: #999;
+}
+
+.relay-status-indicator.relay-on {
+    background-color: #1b5e20;
+    color: #4caf50;
+}
+
+/* Relay configuration form styles */
+.relay-config-section {
+    border: 1px solid #555;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 16px;
+    background-color: #3a3a3a;
+}
+
+.relay-config-title {
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #4a4a4a;
+    padding-bottom: 8px;
+}
+
+.relay-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.relay-form-full {
+    grid-column: span 2;
+}
+
+/* Relay grid for card view (if implemented) */
+.relay-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin: 16px 0;
+}
+
+.relay-card {
+    background: #4a4a4a;
+    border: 1px solid #555;
+    border-radius: 6px;
+    padding: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.relay-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    border-color: #777;
+}
+
+.relay-card.relay-on {
+    border-color: #28a745;
+    background: linear-gradient(145deg, #4a4a4a, #3a4a3a);
+}
+
+.relay-card-icon {
+    font-size: 2rem;
+    margin-bottom: 8px;
+    transition: color 0.3s ease;
+}
+
+.relay-card.relay-off .relay-card-icon {
+    color: #c7c7c7;
+}
+
+.relay-card.relay-on .relay-card-icon {
+    color: #28a745;
+}
+
+.relay-card-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+.relay-card-status {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 12px;
+    display: inline-block;
+}
+
+.relay-card.relay-off .relay-card-status {
+    background-color: #424242;
+    color: #999;
+}
+
+.relay-card.relay-on .relay-card-status {
+    background-color: #1b5e20;
+    color: #4caf50;
+}
+
+/* Relay info tooltip */
+.relay-tooltip {
+    position: relative;
+}
+
+.relay-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2d2d2d;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    z-index: 1000;
+}
+
+.relay-tooltip:hover::after {
+    opacity: 1;
+}
+
+/* Status bar relay counter */
+.relay-status-summary {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8rem;
+}
+
+.relay-count {
+    font-weight: 600;
+}
+
+.relay-count.has-active {
+    color: #28a745;
+}
+
+.relay-count.all-inactive {
+    color: #c7c7c7;
+}
+
+/* Animation for state changes */
+@keyframes relay-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+    }
+}
+
+.relay-toolbar-btn.relay-on.relay-activated {
+    animation: relay-pulse 0.6s;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .relay-toolbar-btn {
+        width: 36px;
+        height: 36px;
+        margin: 0 2px;
+    }
+    
+    .relay-form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .relay-form-full {
+        grid-column: span 1;
+    }
+    
+    .relay-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 8px;
+    }
+}
+
+/* Dark mode enhancements */
+.relay-toolbar-btn:focus {
+    outline: 2px solid #2196f3;
+    outline-offset: 2px;
+}
+
+/* Loading state */
+.relay-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.relay-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid #555;
+    border-top: 2px solid #2196f3;
+    border-radius: 50%;
+    animation: relay-spin 1s linear infinite;
+}
+
+@keyframes relay-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+} 

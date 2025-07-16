@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resin Print Portal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+    <!-- Toolbar -->
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <div class="toolbar-title">🖨️ Resin Print Portal</div>
+            <div class="plugin-status-items" id="pluginStatusItems">
+                <!-- Plugin status items will be loaded here -->
+            </div>
+        </div>
+        <div class="toolbar-right">
+            <button class="toolbar-btn" onclick="openConfigModal()">
+                <span>⚙️</span>
+                <span>Settings</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Status Section -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-left">
+                    📊 Status
+                </div>
+                <div class="card-header-right plugin-status-items" id="additionalStatusItems">
+                    <!-- Additional status items from plugins -->
+                </div>
+            </div>
+            <div class="status-grid">
+                <div class="status-item">
+                    <div class="status-label">Connection</div>
+                    <div class="status-value" id="connectionStatus">Checking...</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Print Status</div>
+                    <div class="status-value" id="printStatus">IDLE</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Progress</div>
+                    <div class="status-value" id="progressStatus">0.0%</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Z Position</div>
+                    <div class="status-value" id="zPosition">0.00 mm</div>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressBar"></div>
+            </div>
+        </div>
+
+        <!-- Alerts -->
+        <div id="alertArea"></div>
+
+        <!-- Main Grid -->
+        <div class="main-grid">
+            <!-- Left Column: Webcam -->
+            <div class="card">
+                <div class="card-header">📹 Webcam</div>
+                <div class="webcam-container">
+                    <div style="text-align: center;">
+                        <div style="font-size: 2rem; margin-bottom: 8px;">📷</div>
+                        <div>No webcam connected</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Files -->
+            <div class="card">
+                <div class="card-header">📁 Files</div>
+                
+                <div class="upload-area" id="uploadArea">
+                    <input type="file" id="fileInput" multiple accept=".ctb,.cbddlp,.pwmx,.pwmo,.pwms,.pws,.pw0,.pwx" style="display: none;">
+                    <div class="upload-icon">📎</div>
+                    <div class="upload-text">Click or drop files here</div>
+                    <div class="upload-hint">CTB, CBDDLP, PWMX, PWS formats</div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn" onclick="refreshFiles()">🔄 Refresh</button>
+                    <button class="btn btn-warning" onclick="cleanupFiles()">🧹 Cleanup</button>
+                    <button class="btn btn-success" onclick="showStorageStats()">📊 Stats</button>
+                </div>
+
+                <div id="fileList">
+                    <div class="empty-state">Loading files...</div>
+                </div>
+
+                <!-- Storage Stats (hidden by default) -->
+                <div id="storageStats" style="display: none;">
+                    <div class="storage-stats">
+                        <div class="storage-stat">
+                            <div class="storage-stat-value" id="totalFiles">0</div>
+                            <div class="storage-stat-label">Total Files</div>
+                        </div>
+                        <div class="storage-stat">
+                            <div class="storage-stat-value" id="totalSize">0 MB</div>
+                            <div class="storage-stat-label">Total Size</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls and USB Grid -->
+        <div class="controls-grid">
+            <!-- Controls -->
+            <div class="card">
+                <div class="card-header">🎮 Controls</div>
+                
+                <div class="control-section">
+                    <div class="btn-group">
+                        <button class="btn" id="connectBtn" onclick="connectPrinter()">Connect</button>
+                        <button class="btn btn-danger" id="disconnectBtn" onclick="disconnectPrinter()">Disconnect</button>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <div class="btn-group">
+                        <button class="btn btn-success" id="startBtn" onclick="startPrint()" disabled>▶ Start</button>
+                        <button class="btn btn-warning" id="pauseBtn" onclick="pausePrint()" disabled>⏸ Pause</button>
+                        <button class="btn btn-warning" id="resumeBtn" onclick="resumePrint()" disabled>▶ Resume</button>
+                        <button class="btn btn-danger" id="stopBtn" onclick="stopPrint()" disabled>⏹ Stop</button>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h4>Z-Axis Movement</h4>
+                    <div class="z-controls">
+                        <button class="btn" onclick="moveZ(10)">⬆ +10mm</button>
+                        <button class="btn" onclick="moveZ(-10)">⬇ -10mm</button>
+                        <button class="btn" onclick="homeZ()">🏠 Home Z</button>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <button class="btn btn-warning" onclick="recoverUSB()">🔧 Recover USB</button>
+                </div>
+            </div>
+
+            <!-- USB Status -->
+            <div class="card">
+                <div class="card-header">💾 USB Gadget</div>
+                <div class="usb-grid">
+                    <div class="usb-item">
+                        <div class="usb-label">Service</div>
+                        <div class="usb-value" id="usbService">Checking...</div>
+                    </div>
+                    <div class="usb-item">
+                        <div class="usb-label">Mount</div>
+                        <div class="usb-value" id="usbMount">Checking...</div>
+                    </div>
+                    <div class="usb-item">
+                        <div class="usb-label">Free Space</div>
+                        <div class="usb-value" id="usbSpace">Unknown</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Console Events -->
+        <div class="card">
+            <div class="card-header">💬 Console Events</div>
+            <div class="console-area" id="consoleArea">
+                <div class="console-line info">[12:34:56] System initialized</div>
+                <div class="console-line">Waiting for printer connection...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Config Modal -->
+    <div class="modal-overlay" id="configModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Settings</div>
+                <button class="modal-close" onclick="closeConfigModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-tabs" id="configTabs">
+                    <button class="modal-tab active" onclick="switchConfigTab('general')">
+                        <span class="modal-tab-icon">⚙️</span>
+                        General
+                    </button>
+                    <button class="modal-tab" onclick="switchConfigTab('printer')">
+                        <span class="modal-tab-icon">🖨️</span>
+                        Printer
+                    </button>
+                    <button class="modal-tab" onclick="switchConfigTab('interface')">
+                        <span class="modal-tab-icon">🎨</span>
+                        Interface
+                    </button>
+                    <button class="modal-tab" onclick="switchConfigTab('plugins')">
+                        <span class="modal-tab-icon">🔌</span>
+                        Plugins
+                    </button>
+                </div>
+                <div class="modal-content" id="configContent">
+                    <!-- Content will be loaded dynamically -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" onclick="resetConfig()">Reset to Defaults</button>
+                <button class="btn" onclick="closeConfigModal()">Cancel</button>
+                <button class="btn btn-success" onclick="saveConfig()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Printing Overlay -->
+    <div class="printing-overlay" id="printingOverlay">
+        <button class="close-overlay" onclick="closePrintingView()">×</button>
+        
+        <div class="printing-header">
+            <div class="printing-title" id="printingFileName">Print Job</div>
+            <div class="printing-subtitle">
+                <span id="printingLayerInfo">Layer 0 of 100</span> • 
+                <span id="printingMaterial">Resin Material</span>
+            </div>
+        </div>
+
+        <div class="printing-main">
+            <div class="printing-icon">🧊</div>
+
+            <div class="printing-stats">
+                <div class="printing-stat">
+                    <div class="printing-stat-icon">⏱️</div>
+                    <div>
+                        <div class="printing-stat-value" id="printingProgress">100%</div>
+                        <div class="printing-stat-label">Progress</div>
+                    </div>
+                </div>
+                <div class="printing-stat">
+                    <div class="printing-stat-icon">📏</div>
+                    <div>
+                        <div class="printing-stat-value" id="printingSpeed">37 mm/s</div>
+                        <div class="printing-stat-label">Speed</div>
+                    </div>
+                </div>
+                <div class="printing-stat">
+                    <div class="printing-stat-icon">⬇️</div>
+                    <div>
+                        <div class="printing-stat-value" id="printingZPos">0.28</div>
+                        <div class="printing-stat-label">Z Position</div>
+                    </div>
+                </div>
+                <div class="printing-stat">
+                    <div class="printing-stat-icon">📊</div>
+                    <div>
+                        <div class="printing-stat-value" id="printingBytes">0%</div>
+                        <div class="printing-stat-label">Data</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div style="font-size: 0.9rem; font-weight: 600; color: #ffffff; margin-bottom: 4px;" id="printingTimeLeft">16m</div>
+                <div style="font-size: 0.7rem; color: #bbb;">Left</div>
+            </div>
+        </div>
+
+        <div class="printing-controls">
+            <button class="printing-btn orange" id="printingPauseBtn" onclick="pausePrint()">
+                <div class="printing-btn-icon">⏸️</div>
+                <div class="printing-btn-label">Pause</div>
+            </button>
+            <button class="printing-btn purple" onclick="stopPrint()">
+                <div class="printing-btn-icon">⏹️</div>
+                <div class="printing-btn-label">Cancel</div>
+            </button>
+            <button class="printing-btn green" onclick="homeZ()">
+                <div class="printing-btn-icon">🔧</div>
+                <div class="printing-btn-label">Fine Tuning</div>
+            </button>
+            <button class="printing-btn blue" onclick="closePrintingView()">
+                <div class="printing-btn-icon">⚙️</div>
+                <div class="printing-btn-label">Settings</div>
+            </button>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
