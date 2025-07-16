@@ -24,16 +24,17 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Plugin Status Items
-async function loadPluginStatusItems() {
+// Plugin Toolbar Items
+async function loadPluginToolbarItems() {
     try {
-        const response = await fetch('/api/config/ui/status_bar_items');
+        const response = await fetch('/api/config/ui/toolbar_items');
         const result = await response.json();
         
         if (result.success && result.items) {
-            updatePluginStatusItems(result.items);
+            updatePluginToolbarItems(result.items);
         }
     } catch (error) {
-        console.error('Error loading plugin status items:', error);
+        console.error('Error loading plugin toolbar items:', error);
     }
 }
 
@@ -1167,26 +1168,39 @@ function updatePluginToolbarItems(items) {
 }
 
 function createPluginToolbarElement(item) {
-    const element = document.createElement('div');
+    const element = document.createElement('button');
+    
+    // Use the provided class or default to toolbar-btn
     element.className = item.class || 'toolbar-btn';
+    
+    // Set the content (this includes the Font Awesome icons)
     element.innerHTML = item.content;
     
+    // Apply custom styles if provided
     if (item.style) {
         Object.assign(element.style, item.style);
     }
     
-    if (item.onclick) {
-        // Create onclick function from string
-        element.onclick = new Function(item.onclick);
+    // Set data attributes for relay management
+    if (item['data-relay-id']) {
+        element.setAttribute('data-relay-id', item['data-relay-id']);
+    }
+    if (item['data-relay-state'] !== undefined) {
+        element.setAttribute('data-relay-state', item['data-relay-state']);
     }
     
+    // Create onclick function from string if provided
+    if (item.onclick) {
+        element.setAttribute('onclick', item.onclick);
+    }
+    
+    // Set tooltip
     if (item.title) {
         element.title = item.title;
     }
     
     return element;
 }
-
 // Relay control functions (for plugin integration)
 async function toggleRelay(relayId) {
     if (window.relayToggling) return;
@@ -1264,15 +1278,14 @@ async function refreshRelayStates() {
     }
 }
 
-// Update the main initialization function
+// Initialize
 document.addEventListener('DOMContentLoaded', function() {
     setupUpload();
     updateStatus();
     updateFiles();
     checkUSB();
     loadPluginStatusItems();
-    loadPluginCards();        // Load plugin cards
-    loadPluginToolbarItems(); // Load plugin toolbar items
+    loadPluginToolbarItems(); // Add this line
     addConsoleMessage('System initialized with plugin support', 'info');
     addConsoleMessage('Waiting for printer connection...');
     
@@ -1280,7 +1293,8 @@ document.addEventListener('DOMContentLoaded', function() {
         updateStatus();
         checkUSB();
         loadPluginStatusItems();
-        refreshRelayStates();     // Refresh relay states
+        loadPluginToolbarItems(); // Add this line to the interval too
+        refreshRelayStates();
     }, 3000);
 });
 
