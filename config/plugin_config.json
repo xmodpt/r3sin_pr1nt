@@ -1,6 +1,8 @@
 {
-  "enabled_plugins": [
-    "relay_controller"
-  ],
-  "plugin_settings": {}
+  "enabled_plugins": [],
+  "plugin_settings": {
+    "relay_controller": {
+      "display_mode": "cards"
+    }
+  }
 }

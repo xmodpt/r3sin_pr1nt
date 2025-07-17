@@ -131,4 +131,9 @@ async function getRelayStatus() {
 }
 
 // Export functions for use by other parts of the application
-window.relayController = { 
+window.relayController = {
+    toggleRelay,
+    setRelayState,
+    getRelayStatus,
+    refreshRelayStates
+};

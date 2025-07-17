@@ -631,7 +631,9 @@ def serialize_print_status(status):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # Get plugin assets for template
+    plugin_assets = plugin_manager.get_frontend_assets()
+    return render_template('index.html', plugin_assets=plugin_assets)
 
 @app.route('/api/status')
 def api_status():

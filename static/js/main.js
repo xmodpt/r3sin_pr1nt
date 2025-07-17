@@ -24,17 +24,16 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Plugin Status Items
-// Plugin Toolbar Items
-async function loadPluginToolbarItems() {
+async function loadPluginStatusItems() {
     try {
-        const response = await fetch('/api/config/ui/toolbar_items');
+        const response = await fetch('/api/config/ui/status_bar_items');
         const result = await response.json();
         
         if (result.success && result.items) {
-            updatePluginToolbarItems(result.items);
+            updatePluginStatusItems(result.items);
         }
     } catch (error) {
-        console.error('Error loading plugin toolbar items:', error);
+        console.error('Error loading plugin status items:', error);
     }
 }
 
@@ -1278,14 +1277,15 @@ async function refreshRelayStates() {
     }
 }
 
-// Initialize
+// Update the main initialization function
 document.addEventListener('DOMContentLoaded', function() {
     setupUpload();
     updateStatus();
     updateFiles();
     checkUSB();
     loadPluginStatusItems();
-    loadPluginToolbarItems(); // Add this line
+    loadPluginCards();        // Load plugin cards
+    loadPluginToolbarItems(); // Load plugin toolbar items
     addConsoleMessage('System initialized with plugin support', 'info');
     addConsoleMessage('Waiting for printer connection...');
     
@@ -1293,8 +1293,7 @@ document.addEventListener('DOMContentLoaded', function() {
         updateStatus();
         checkUSB();
         loadPluginStatusItems();
-        loadPluginToolbarItems(); // Add this line to the interval too
-        refreshRelayStates();
+        refreshRelayStates();     // Refresh relay states
     }, 3000);
 });
 
